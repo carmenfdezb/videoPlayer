@@ -37,6 +37,7 @@ import Sailfish.Gallery 1.0
 import Nemo.Configuration 1.0
 import "helper"
 import "fileman"
+import "helper/otherComponents"
 
 Page {
     id: page
@@ -252,14 +253,18 @@ Page {
         property real scale: 2
     }
 
-    DocumentGalleryModel {
-        id: videosModel
+//    DocumentGalleryModel {
+//        id: videosModel
 
-        rootType: DocumentGallery.Video
-        autoUpdate: true
-        properties: ["url", "title", "lastModified", "duration"]
-        sortProperties: ["-lastModified"]
-        filter: GalleryStartsWithFilter { property: "title"; value: searchField.text.toLowerCase().trim() }
+//        rootType: DocumentGallery.Video
+//        autoUpdate: true
+//        properties: ["url", "title", "lastModified", "duration"]
+//        sortProperties: ["-lastModified"]
+//        filter: GalleryStartsWithFilter { property: "title"; value: searchField.text.toLowerCase().trim() }
+//    }
+
+    VideoModel {
+        id: videosModel
     }
 
     Formatter {
@@ -346,7 +351,7 @@ Page {
 
         SilicaGridView {
             id: gridView
-            model: videosModel
+            model: videosModel.model
             enabled: !pinchArea.pinch.active
 
             anchors.top: searchField.bottom
@@ -367,7 +372,7 @@ Page {
             }
 
             ViewPlaceholder {
-                text: qsTrId("No videos")
+                text: qsTr("No videos")
                 enabled: videosModel.count === 0
             }
 
@@ -377,7 +382,9 @@ Page {
                 source: resizeAnimation.running ? "" : model.url
                 size: gridView.cellWidth
                 opacity: 1
-                duration: model.duration > 3600 ? formatter.formatDuration(model.duration, Formatter.DurationLong) : formatter.formatDuration(model.duration, Formatter.DurationShort)
+                mimeType: model.mimeType
+                duration: model.duration > 3600 ? formatter.formatDuration(model.duration, Formatter.DurationLong) :
+                                                  formatter.formatDuration(model.duration, Formatter.DurationShort)
                 onClicked: {
                     var fileUrl = videosModel.get(index).url
                     originalUrl = fileUrl;
@@ -431,7 +438,7 @@ Page {
                     else if (btnId == "bookmarksBtn")
                         pageStack.push(Qt.resolvedUrl("BookmarksPage.qml"), {dataContainer: page, modelBookmarks: mainWindow.modelBookmarks});
                     else if (btnId == "youtubeBtn")
-                        pageStack.push(Qt.resolvedUrl("SecondPage.qml"), {dataContainer: page});
+                        pageStack.push(Qt.resolvedUrl("YTSearchResultsPage.qml"), {dataContainer: page});
                     else if (btnId == "openFileBtn") {
                         if (mainWindow.firstPage.openDialogType === "adv" || mainWindow.firstPage.openDialogType === "simple")
                             pageStack.push(mainWindow.firstPage.openFileComponent);
@@ -446,7 +453,7 @@ Page {
                 }
                 onPressAndHold: {
                     if (btnId == "youtubeBtn")
-                        pageStack.push(Qt.resolvedUrl("YTSearchResultsPage.qml"), {dataContainer: page});
+                        pageStack.push(Qt.resolvedUrl("SecondPage.qml"), {dataContainer: page});
                 }
 
                 color: colour
@@ -515,9 +522,15 @@ Page {
         }
         onError: {
             busy.running = false
-            if (message != "") {
-                errTxt.visible = true
-                errTxt.text = message
+            isYtSearchRunning = false
+            if (!isYtSearchAborted) {
+                if (message != "") {
+                    errTxt.visible = true
+                    errTxt.text = message
+                }
+            }
+            else {
+                isYtSearchAborted = false
             }
         }
         onUpdateComplete: {
